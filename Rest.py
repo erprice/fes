@@ -6,6 +6,7 @@ import hashlib
 import threading
 import time
 import requests
+import json
 
 app = Flask(__name__)
 redis_server = redis.Redis("localhost")
@@ -107,7 +108,9 @@ class QueueConsumer(threading.Thread):
                     pipe.hdel(EVENTS, tuple[0])
                     pipe.zrem(EXPIRATIONS, tuple[0])
                     response = pipe.execute()
-                    requests.put(FES_CONSUMER_URL, data=str(response[0]), headers={'content-type': 'application/json'})
+                    response = requests.put(FES_CONSUMER_URL, data=json.dumps(str(response[0])), headers={'Content-Type': 'application/json'})
+
+                    #TODO delete me
                     print "expiring event: " + str(response[0])
 
 if __name__ == '__main__':
