@@ -107,11 +107,11 @@ class QueueConsumer(threading.Thread):
                     pipe.hget(EVENTS, tuple[0])
                     pipe.hdel(EVENTS, tuple[0])
                     pipe.zrem(EXPIRATIONS, tuple[0])
-                    response = pipe.execute()
-                    response = requests.put(FES_CONSUMER_URL, data=json.dumps(str(response[0])), headers={'Content-Type': 'application/json'})
+                    redisResponse = pipe.execute()
+                    restResponse = requests.put(FES_CONSUMER_URL, data=json.dumps(str(redisResponse[0])), headers={'Content-Type': 'application/json'})
 
                     #TODO delete me
-                    print "expiring event: " + str(response[0])
+                    print "expiring event: " + redisResponse[0]
 
 if __name__ == '__main__':
     queueConsumer = QueueConsumer()
