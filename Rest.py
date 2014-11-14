@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, make_response, abort, request
+from ordereddict import OrderedDict
 import redis
 import datetime
 import calendar
@@ -7,29 +8,46 @@ import threading
 import time
 import requests
 import json
+import base64
 
 app = Flask(__name__)
 redis_server = redis.Redis("localhost")
 
-EXPIRATIONS = "fes:expirations"
-EVENTS = "fes:events"
+EXPIRATIONS_QUEUE = "fes:EXPIRATIONS_QUEUE"
+EVENTS_QUEUE = "fes:EVENTS_QUEUE"
+
+HBASE_BASE_URL = "http://localhost:8080"
+
+EVENTS_TABLE = 'fes_event'
+EVENTS_CF = 'event'
+EVENT_COLUMN = 'payload'
 
 FES_CONSUMER_URL = "http://localhost:5001/expiration"
 
 @app.route('/add/<string:id>/<int:expiration>', methods=['POST'])
 def add(id, expiration):
-    now = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
+    now = datetime.datetime.utcnow()
 
-    if request.json == None or expiration <= now:
+    if request.json == None or expiration <= calendar.timegm(now.utctimetuple()):
         abort(400)
     event = FutureEvent(id, request.json, expiration)
 
     hash = generate_hash(id)
 
-    pipe = redis_server.pipeline()
-    pipe.zadd(EXPIRATIONS, hash, expiration)
-    pipe.hset(EVENTS, hash, event.payload)
-    pipe.execute()
+    fifteen_minutes_from_now = now + datetime.timedelta(minutes=15)
+
+    if expiration <= calendar.timegm(fifteen_minutes_from_now.utctimetuple()):
+        pipe = redis_server.pipeline()
+        pipe.zadd(EXPIRATIONS_QUEUE, hash, expiration)
+        pipe.hset(EVENTS_QUEUE, hash, event.payload)
+        pipe.execute()
+    else:
+        rowkey = str(expiration) + ':' + hash
+        url = HBASE_BASE_URL + "/" + EVENTS_TABLE + "/" + rowkey + "/" + EVENTS_CF + ":" + EVENT_COLUMN
+        headers = {"Content-Type" : "application/json"}
+        hbase_data = generate_hbase_data(rowkey, EVENTS_CF + ":" + EVENT_COLUMN, json.dumps(event.payload))
+
+        hbase_response = requests.put(url, data=hbase_data, headers=headers)
 
     return jsonify(event.__dict__), 201
 
@@ -42,8 +60,8 @@ def update_expiration(id, expiration):
     hash = generate_hash(id)
 
     pipe = redis_server.pipeline()
-    pipe.zrem(EXPIRATIONS, hash)
-    pipe.zadd(EXPIRATIONS, hash, expiration)
+    pipe.zrem(EXPIRATIONS_QUEUE, hash)
+    pipe.zadd(EXPIRATIONS_QUEUE, hash, expiration)
     pipe.execute()
     
     return jsonify({}), 200
@@ -53,7 +71,7 @@ def update_event(id):
     if request.json == None:
             abort(400)
 
-    redis_server.hset(EVENTS, generate_hash(id), request.json)
+    redis_server.hset(EVENTS_QUEUE, generate_hash(id), request.json)
     return jsonify({}), 200
 
 @app.route('/delete/<string:id>', methods=['DELETE'])
@@ -62,8 +80,8 @@ def delete(id):
     hash = generate_hash(id)
 
     pipe = redis_server.pipeline()
-    pipe.zrem(EXPIRATIONS, hash)
-    pipe.hdel(EVENTS, hash)
+    pipe.zrem(EXPIRATIONS_QUEUE, hash)
+    pipe.hdel(EVENTS_QUEUE, hash)
     pipe.execute()
     
     return jsonify({}), 200
@@ -78,6 +96,23 @@ def not_found(error):
 
 def generate_hash(id):
     return hashlib.sha224(id).hexdigest()
+
+#hbase rest accepts a very particular data structure, with b64 encoded values
+def generate_hbase_data(key, column, payload):
+    data = {
+            "Row" : [
+                OrderedDict([
+                    ("key", base64.b64encode(key)),
+                    ("Cell", [
+                        {
+                            "column" : base64.b64encode(column),
+                            "$" : base64.b64encode(json.dumps(payload))
+                        }
+                    ])
+                ])
+            ]
+        }
+    return json.dumps(data)
 
 class FutureEvent:
     def __init__(self, id, payload, expiration):
@@ -96,7 +131,7 @@ class QueueConsumer(threading.Thread):
     def run(self):
         while True:
             now = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
-            hash = redis_server.zrangebyscore(EXPIRATIONS, "-inf", now, None, None, True)
+            hash = redis_server.zrangebyscore(EXPIRATIONS_QUEUE, "-inf", now, None, None, True)
             
             #if there is no work to do, sleep for 1 second
             if (len(hash) == 0):
@@ -104,14 +139,14 @@ class QueueConsumer(threading.Thread):
             else:
                 pipe = redis_server.pipeline()
                 for tuple in hash:
-                    pipe.hget(EVENTS, tuple[0])
-                    pipe.hdel(EVENTS, tuple[0])
-                    pipe.zrem(EXPIRATIONS, tuple[0])
-                    response = pipe.execute()
-                    response = requests.put(FES_CONSUMER_URL, data=json.dumps(str(response[0])), headers={'Content-Type': 'application/json'})
+                    pipe.hget(EVENTS_QUEUE, tuple[0])
+                    pipe.hdel(EVENTS_QUEUE, tuple[0])
+                    pipe.zrem(EXPIRATIONS_QUEUE, tuple[0])
+                    redis_response = pipe.execute()
+                    hbase_response = requests.put(FES_CONSUMER_URL, data=json.dumps(str(redis_response[0])), headers={'Content-Type': 'application/json'})
 
                     #TODO delete me
-                    print "expiring event: " + str(response[0])
+                    print "expiring event: " + str(redis_response[0]) 
 
 if __name__ == '__main__':
     queueConsumer = QueueConsumer()
