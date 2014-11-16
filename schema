@@ -1,0 +1,2 @@
+create "fes_event", 
+{NAME => 'event', VERSIONS => 1, COMPRESSION => 'NONE'}
