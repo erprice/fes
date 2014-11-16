@@ -139,6 +139,7 @@ class QueueConsumer(threading.Thread):
             else:
                 pipe = redis_server.pipeline()
                 for tuple in hash:
+
                     pipe.hget(EVENTS_QUEUE, tuple[0])
                     pipe.hdel(EVENTS_QUEUE, tuple[0])
                     pipe.zrem(EXPIRATIONS_QUEUE, tuple[0])
