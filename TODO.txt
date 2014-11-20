@@ -1,8 +1,11 @@
 TODO
 
-Convert hbase interface to thrift instead of REST
+add an open source license
+add LUA scripting to make related redis calls atomic
 implement redis retries
+convert hbase interface to thrift instead of REST
 implement hbase retries
 create a properties file
 support more compact storage formats than strings...protobufs?
-reswizzle hbase table into two tables: one for event data and an expiration reverse index
+add support for batch adds
+support arbitrary number of hbase index buckets, add this value to the properties file

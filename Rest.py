@@ -19,10 +19,12 @@ EVENTS_QUEUE = "fes:EVENTS_QUEUE"
 HBASE_BASE_URL = "http://localhost:8080"
 
 EVENTS_TABLE = 'fes_event'
-EVENTS_CF = 'event'
-EVENT_COLUMN = 'payload'
+EXPIRATIONS_TABLE = 'fes_expiration'
 
-FES_CONSUMER_URL = "http://localhost:5001/expiration"
+COLUMN_FAMILY = 'attrs'
+
+PAYLOAD_COLUMN = "payload"
+EXPIRATION_COLUMN = "expiration"
 
 @app.route('/add/<string:id>/<int:expiration>', methods=['POST'])
 def add(id, expiration):
@@ -42,12 +44,8 @@ def add(id, expiration):
         pipe.hset(EVENTS_QUEUE, hash, event.payload)
         pipe.execute()
     else:
-        rowkey = str(expiration) + ':' + hash
-        url = HBASE_BASE_URL + "/" + EVENTS_TABLE + "/" + rowkey + "/" + EVENTS_CF + ":" + EVENT_COLUMN
-        headers = {"Content-Type" : "application/json"}
-        hbase_data = generate_hbase_data(rowkey, EVENTS_CF + ":" + EVENT_COLUMN, json.dumps(event.payload))
-
-        hbase_response = requests.put(url, data=hbase_data, headers=headers)
+        write_event(hash, expiration, json.dumps(event.payload))
+        write_expiration_index(hash, expiration)
 
     return jsonify(event.__dict__), 201
 
@@ -97,22 +95,62 @@ def not_found(error):
 def generate_hash(id):
     return hashlib.sha224(id).hexdigest()
 
-#hbase rest accepts a very particular data structure, with b64 encoded values
-def generate_hbase_data(key, column, payload):
-    data = {
-            "Row" : [
-                OrderedDict([
-                    ("key", base64.b64encode(key)),
-                    ("Cell", [
-                        {
-                            "column" : base64.b64encode(column),
-                            "$" : base64.b64encode(json.dumps(payload))
-                        }
-                    ])
-                ])
-            ]
+def generate_event_table_write_data(id, expiration, payload):
+    column_value_dict = {
+        COLUMN_FAMILY + ":" + PAYLOAD_COLUMN : payload,
+        COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration)
+    }
+
+    print column_value_dict
+    return generate_hbase_write_data(id, column_value_dict)
+
+def generate_index_write_data(id, expiration):
+    return generate_hbase_write_data(id, { COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration) } )
+
+def generate_hbase_write_data(rowkey, column_value_dict):
+    row = OrderedDict([
+        ("key", base64.b64encode(rowkey))
+    ])
+
+    cells = []
+    cell = {"Cell" : cells}
+    for key in column_value_dict:
+        cell_entries = {
+            "column" : base64.b64encode(key),
+            "$" : base64.b64encode(column_value_dict[key])
         }
+        cells.append(cell_entries)
+
+    row.update( { "Cell" : cells} )
+    data = { "Row" : [cell] }
+
     return json.dumps(data)
+
+#salt the start of the hbase rowkey to prevent hotspotting on writes
+def generate_salted_row_key(key, expiration):
+    return key[:1] + "_" + str(expiration)
+
+def write_event(id, expiration, payload):
+    rowkey = id
+    url = HBASE_BASE_URL + "/" + EVENTS_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
+    hbase_data = generate_event_table_write_data(rowkey, str(expiration), payload)
+
+    write_to_hbase(url, hbase_data)
+
+def write_expiration_index(id, expiration):
+    rowkey = generate_salted_row_key(id, expiration)
+    url = HBASE_BASE_URL + "/" + EXPIRATIONS_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
+    hbase_data = generate_index_write_data(rowkey, id)
+
+    write_to_hbase(url, hbase_data)
+
+def write_to_hbase(url, data):
+    headers = {"Content-Type" : "application/json"}
+
+    hbase_response = requests.put(url, data=data, headers=headers)
+    
+    #TODO delete me
+    print hbase_response
 
 class FutureEvent:
     def __init__(self, id, payload, expiration):

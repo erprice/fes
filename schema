@@ -1,2 +1,5 @@
 create "fes_event", 
-{NAME => 'event', VERSIONS => 1, COMPRESSION => 'NONE'}
+{NAME => 'attrs', VERSIONS => 1, COMPRESSION => 'NONE'}
+
+create "fes_expiration", 
+{NAME => 'attrs', VERSIONS => 1, COMPRESSION => 'NONE'}
