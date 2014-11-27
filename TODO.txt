@@ -1,6 +1,7 @@
 TODO
 
 add an open source license
+unit tests
 add LUA scripting to make related redis calls atomic
 implement redis retries
 convert hbase interface to thrift instead of REST
@@ -9,3 +10,6 @@ create a properties file
 support more compact storage formats than strings...protobufs?
 add support for batch adds
 support arbitrary number of hbase index buckets, add this value to the properties file
+bug: add an event that gets put into hbase, then add it again into redis
+bug: add does not overwrite index entries in hbase or redis
+lock events while manipulating them
