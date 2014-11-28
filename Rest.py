@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 from flask import Flask, jsonify, make_response, abort, request
 from ordereddict import OrderedDict
 import redis
@@ -31,7 +33,7 @@ EXPIRATION_COLUMN = "expiration"
 def add(id, expiration):
     now = datetime.datetime.utcnow()
 
-    if request.json == None or expiration <= calendar.timegm(now.utctimetuple()):
+    if request.json is None or expiration <= calendar.timegm(now.utctimetuple()):
         abort(400)
     event = FutureEvent(id, request.json, expiration)
 
@@ -64,7 +66,7 @@ def update_expiration(id, expiration):
     redis_score = redis_server.zscore(EXPIRATION_QUEUE, id_hash)
 
     #it's already in redis
-    if redis_score != None:
+    if redis_score is not None:
         #the new expiration is within 15 minutes, just update redis expiration
         if expiration <= calendar.timegm(fifteen_minutes_from_now.utctimetuple()):
             redis_server.zadd(EXPIRATION_QUEUE, id_hash, expiration)
@@ -77,7 +79,7 @@ def update_expiration(id, expiration):
     event = read_hbase_event(id)
 
     #it's in hbase
-    if event != None:
+    if event is not None:
         #the new expiration is not within 15 minutes, just update hbase expiration
         if expiration > calendar.timegm(fifteen_minutes_from_now.utctimetuple()):
             delete_hbase_expiration(id_hash, event.expiration)
@@ -92,7 +94,7 @@ def update_expiration(id, expiration):
 
 @app.route('/update/event/<string:id>', methods=['PUT'])
 def update_event(id):
-    if request.json == None:
+    if request.json is None:
             abort(400)
 
     redis_server.hset(EVENT_QUEUE, generate_hash(id), request.json)
@@ -201,11 +203,11 @@ def move_event_to_hbase(id_hash, expiration):
     data = redis_response[0]
 
     #TODO better exception handling
-    if data == None:
+    if data is None:
         print "ERROR copying event " + id_hash + " to hbase, data not found"
         return
 
-    if expiration == None:
+    if expiration is None:
         expiration = int(redis_response[1])
 
     #add both entries to hbase
@@ -219,7 +221,7 @@ def move_event_to_redis(id, expiration):
     event = read_hbase_event(id)
 
     #TODO better exception handling
-    if event == None:
+    if event is None:
         print "ERROR copying event " + id_hash + " to redis, data not found"
         return
 
@@ -227,7 +229,7 @@ def move_event_to_redis(id, expiration):
     delete_hbase_event(id_hash)
     delete_hbase_expiration(id_hash, event.expiration)
 
-    if expiration != None:
+    if expiration is not None:
         event.expiration = expiration
 
     #add to redis
@@ -268,7 +270,7 @@ def get_event_from_hbase_response(key, data):
             column = base64.b64decode(cell['column'])
             value = cell['$']
 
-            if value == None:
+            if value is None:
                 continue
 
             if column == COLUMN_FAMILY + ":" + PAYLOAD_COLUMN:
@@ -286,7 +288,7 @@ def get_id_hash_from_hbase_response(data):
             column = base64.b64decode(cell['column'])
             value = cell['$']
 
-            if value == None:
+            if value is None:
                 continue
 
             if column == COLUMN_FAMILY + ":" + EXPIRATION_COLUMN:
