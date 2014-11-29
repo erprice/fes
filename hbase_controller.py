@@ -2,7 +2,7 @@ from ordereddict import OrderedDict
 import requests
 import json
 import base64
-import future_event
+from future_event import future_event
 
 HBASE_BASE_URL = "http://localhost:8080"
 
@@ -82,15 +82,14 @@ def delete_hbase_expiration(id_hash, expiration):
     url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey
     hbase_response = requests.delete(url)
 
-def read_hbase_event(key):
-    rowkey = generate_hash(key)
-    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + rowkey
+def read_hbase_event(id_hash):
+    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash
 
     headers = {"Accept" : "application/json"}
 
     hbase_response = requests.get(url, headers=headers)
     hbase_data = json.loads(hbase_response.text)
-    futureEvent = get_event_from_hbase_response(key, hbase_data)
+    futureEvent = get_event_from_hbase_response(hbase_data)
 
     return futureEvent;
 
@@ -105,7 +104,7 @@ def read_hbase_expiration_index(key, expiration):
 
     return get_id_hash_from_hbase_response(hbase_data)
 
-def get_event_from_hbase_response(key, data):
+def get_event_from_hbase_response(data):
     for row in data['Row']:
         payload = ""
         expiration = ""
@@ -122,7 +121,7 @@ def get_event_from_hbase_response(key, data):
             elif column == COLUMN_FAMILY + ":" + EXPIRATION_COLUMN:
                 expiration = base64.b64decode(str(value))
 
-    return future_event(key, payload, expiration)
+    return future_event(None, payload, expiration)
 
 def get_id_hash_from_hbase_response(data):
     for row in data['Row']:
