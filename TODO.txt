@@ -12,4 +12,3 @@ support arbitrary number of hbase index buckets, add this value to the propertie
 bug: add an event that gets put into hbase, then add it again into redis
 bug: add does not overwrite index entries in hbase
 lock events while manipulating them
-bug: update event expiration can read the same event from hbase twice

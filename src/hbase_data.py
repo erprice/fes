@@ -14,18 +14,60 @@ COLUMN_FAMILY = 'attrs'
 PAYLOAD_COLUMN = "payload"
 EXPIRATION_COLUMN = "expiration"
 
-def generate_event_table_write_data(id, expiration, payload):
+def write_hbase_event(id, expiration, payload):
+    rowkey = id
+    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
+    hbase_data = _generate_event_table_write_data(rowkey, str(expiration), payload)
+
+    _write_to_hbase(url, hbase_data)
+
+def write_hbase_expiration_index(id, expiration):
+    rowkey = _generate_salted_row_key(id, expiration)
+    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
+    hbase_data = _generate_index_write_data(rowkey, id)
+
+    _write_to_hbase(url, hbase_data)
+
+def delete_hbase_event(id_hash):
+    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash
+    hbase_response = requests.delete(url)
+
+def delete_hbase_expiration(id_hash, expiration):
+    rowkey = _generate_salted_row_key(id_hash, expiration)
+    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey
+    hbase_response = requests.delete(url)
+
+def read_hbase_event(id_hash):
+    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash
+
+    headers = {"Accept" : "application/json"}
+
+    hbase_response = requests.get(url, headers=headers)
+    hbase_data = json.loads(hbase_response.text)
+    futureEvent = _get_event_from_hbase_response(hbase_data)
+
+    return futureEvent;
+
+"""salt the start of the hbase rowkey to prevent hotspotting on writes"""
+def _generate_salted_row_key(key, expiration):
+    return key[:1] + "_" + str(expiration)
+
+def _write_to_hbase(url, data):
+    headers = {"Content-Type" : "application/json"}
+    hbase_response = requests.put(url, data=data, headers=headers)
+
+def _generate_event_table_write_data(id, expiration, payload):
     column_value_dict = {
         COLUMN_FAMILY + ":" + PAYLOAD_COLUMN : payload,
         COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration)
     }
 
-    return generate_hbase_write_data(id, column_value_dict)
+    return _generate_hbase_write_data(id, column_value_dict)
 
-def generate_index_write_data(id, expiration):
-    return generate_hbase_write_data(id, { COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration) } )
+def _generate_index_write_data(id, expiration):
+    return _generate_hbase_write_data(id, { COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration) } )
 
-def generate_hbase_write_data(rowkey, column_value_dict):
+def _generate_hbase_write_data(rowkey, column_value_dict):
     row = OrderedDict([
         ("key", base64.b64encode(rowkey))
     ])
@@ -44,67 +86,7 @@ def generate_hbase_write_data(rowkey, column_value_dict):
 
     return json.dumps(data)
 
-#salt the start of the hbase rowkey to prevent hotspotting on writes
-def generate_salted_row_key(key, expiration):
-    return key[:1] + "_" + str(expiration)
-
-def write_hbase_event(id, expiration, payload):
-    rowkey = id
-    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
-    hbase_data = generate_event_table_write_data(rowkey, str(expiration), payload)
-
-    write_to_hbase(url, hbase_data)
-
-def write_hbase_expiration_index(id, expiration):
-    rowkey = generate_salted_row_key(id, expiration)
-    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
-    hbase_data = generate_index_write_data(rowkey, id)
-
-    write_to_hbase(url, hbase_data)
-
-def read_hbase_expiration_index(id_hash):
-    rowkey = generate_salted_row_key(id_hash, expiration)
-    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
-    headers = {"Accept" : "application/json"}
-
-    hbase_response = requests.put(url, data=data, headers=headers)
-
-def write_to_hbase(url, data):
-    headers = {"Content-Type" : "application/json"}
-    hbase_response = requests.put(url, data=data, headers=headers)
-
-def delete_hbase_event(id_hash):
-    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash
-    hbase_response = requests.delete(url)
-
-def delete_hbase_expiration(id_hash, expiration):
-    rowkey = generate_salted_row_key(id_hash, expiration)
-    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey
-    hbase_response = requests.delete(url)
-
-def read_hbase_event(id_hash):
-    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash
-
-    headers = {"Accept" : "application/json"}
-
-    hbase_response = requests.get(url, headers=headers)
-    hbase_data = json.loads(hbase_response.text)
-    futureEvent = get_event_from_hbase_response(hbase_data)
-
-    return futureEvent;
-
-def read_hbase_expiration_index(key, expiration):
-    rowkey = generate_salted_row_key(generate_hash(key), expiration)
-    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey
-
-    headers = {"Accept" : "application/json"}
-
-    hbase_response = requests.get(url, headers=headers)
-    hbase_data = json.loads(hbase_response.text)
-
-    return get_id_hash_from_hbase_response(hbase_data)
-
-def get_event_from_hbase_response(data):
+def _get_event_from_hbase_response(data):
     for row in data['Row']:
         payload = ""
         expiration = ""
@@ -123,7 +105,7 @@ def get_event_from_hbase_response(data):
 
     return future_event(None, payload, expiration)
 
-def get_id_hash_from_hbase_response(data):
+def _get_id_hash_from_hbase_response(data):
     for row in data['Row']:
         expiration = ""
         

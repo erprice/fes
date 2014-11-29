@@ -15,6 +15,9 @@ def add(id_hash, expiration, payload):
 def get_expiration(id_hash):
     return redis_server.zscore(EXPIRATION_QUEUE, id_hash)
 
+def get_event_payload(id_hash):
+    return redis_server.hget(EVENT_QUEUE, id_hash)
+
 def update_expiration(id_hash, expiration):
     redis_server.zadd(EXPIRATION_QUEUE, id_hash, expiration)
 
