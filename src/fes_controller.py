@@ -11,6 +11,39 @@ STORAGE_CUTOFF_MINUTES = 15
 def generate_hash(id):
     return hashlib.sha224(id).hexdigest()
 
+def add(id, expiration, payload):
+    now = datetime.datetime.utcnow()
+    if expiration <= calendar.timegm(now.utctimetuple()):
+        raise(FesException("Expiration must be in the future."))
+
+    id_hash = generate_hash(id)
+
+    storage_cutoff_time = now + datetime.timedelta(minutes=STORAGE_CUTOFF_MINUTES)
+
+    # check for an existing hbase record
+    event = hbase_data.read_hbase_event(id_hash)
+
+    #if the new expiration is within 15 minutes
+    if expiration <= calendar.timegm(storage_cutoff_time.utctimetuple()):
+        #delete hbase records
+        if event is not None:
+            hbase_data.delete_all(id_hash, event.expiration)
+
+        #add to redis
+        redis_data.add(id_hash, expiration, payload)
+    else:
+        #delete redis data, if any
+        redis_data.delete(id_hash)
+
+        #delete hbase index
+        if event is not None:
+            hbase_data.delete_hbase_expiration(id_hash, event.expiration)
+
+        #add to hbase
+        hbase_data.add(id_hash, expiration, payload)
+
+    return future_event(id_hash, payload, expiration)
+
 def update_expiration(id, expiration):
     now = datetime.datetime.utcnow()
     if expiration <= calendar.timegm(now.utctimetuple()):
@@ -48,6 +81,20 @@ def update_expiration(id, expiration):
     
     raise(FesException("Event " + id + " not found."))
 
+def delete(id):
+    id_hash = generate_hash(id)
+
+    #delete from redis first
+    event = redis_data.get_and_delete(id_hash)
+
+    #if it wasn't in redis, delete from hbase
+    if event is None:
+        #retrieve expiration so we can delete the index entry
+        event = hbase_data.read_hbase_event(id_hash)
+
+        if event is not None:
+            hbase_data.delete_all(id_hash, event.expiration)
+
 def _move_event_to_hbase(id_hash, expiration, payload):
     if payload is None:
         raise(FesException("Error copying event " + id_hash + " to hbase. Data not found."))
@@ -60,7 +107,7 @@ def _move_event_to_hbase(id_hash, expiration, payload):
 
 def _move_event_to_redis(id_hash, expiration, event):
     if event is None:
-        raise(FesException("Error copying event " + id_hash + " to redis, data not found"))
+        raise(FesException("Error copying event " + id_hash + " to redis. Data not found."))
 
     #delete both entries from hbase
     hbase_data.delete_hbase_event(id_hash)

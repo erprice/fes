@@ -14,6 +14,10 @@ COLUMN_FAMILY = 'attrs'
 PAYLOAD_COLUMN = "payload"
 EXPIRATION_COLUMN = "expiration"
 
+def add(id_hash, expiration, payload):
+    write_hbase_event(id_hash, expiration, payload)
+    write_hbase_expiration_index(id_hash, expiration)
+
 def write_hbase_event(id, expiration, payload):
     rowkey = id
     url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
@@ -21,12 +25,16 @@ def write_hbase_event(id, expiration, payload):
 
     _write_to_hbase(url, hbase_data)
 
-def write_hbase_expiration_index(id, expiration):
-    rowkey = _generate_salted_row_key(id, expiration)
+def write_hbase_expiration_index(id_hash, expiration):
+    rowkey = _generate_salted_row_key(id_hash, expiration)
     url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
-    hbase_data = _generate_index_write_data(rowkey, id)
+    hbase_data = _generate_index_write_data(rowkey, id_hash)
 
     _write_to_hbase(url, hbase_data)
+
+def delete_all(id_hash, expiration):
+    delete_hbase_event(id_hash)
+    delete_hbase_expiration(id_hash, expiration)
 
 def delete_hbase_event(id_hash):
     url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash
@@ -43,6 +51,9 @@ def read_hbase_event(id_hash):
     headers = {"Accept" : "application/json"}
 
     hbase_response = requests.get(url, headers=headers)
+    if hbase_response.status_code == 404:
+        return None
+
     hbase_data = json.loads(hbase_response.text)
     futureEvent = _get_event_from_hbase_response(hbase_data)
 
