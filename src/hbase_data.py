@@ -74,8 +74,8 @@ def _generate_event_table_write_data(id_hash, expiration, payload):
 
     return _generate_hbase_write_data(id_hash, column_value_dict)
 
-def _generate_index_write_data(id_hash, expiration):
-    return _generate_hbase_write_data(id_hash, { COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration) } )
+def _generate_index_write_data(salted_expiration, id_hash):
+    return _generate_hbase_write_data(salted_expiration, { COLUMN_FAMILY + ":" + id_hash : "" } )
 
 def _generate_hbase_write_data(rowkey, column_value_dict):
     row = OrderedDict([
