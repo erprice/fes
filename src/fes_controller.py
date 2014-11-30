@@ -8,15 +8,15 @@ from FesException import FesException
 
 STORAGE_CUTOFF_MINUTES = 15
 
-def generate_hash(id):
-    return hashlib.sha224(id).hexdigest()
+def generate_hash(id_):
+    return hashlib.sha224(id_).hexdigest()
 
-def add(id, expiration, payload):
+def add(id_, expiration, payload):
     now = datetime.datetime.utcnow()
     if expiration <= calendar.timegm(now.utctimetuple()):
         raise(FesException("Expiration must be in the future."))
 
-    id_hash = generate_hash(id)
+    id_hash = generate_hash(id_)
 
     storage_cutoff_time = now + datetime.timedelta(minutes=STORAGE_CUTOFF_MINUTES)
 
@@ -40,12 +40,12 @@ def add(id, expiration, payload):
 
     return future_event(id_hash, payload, expiration)
 
-def update_expiration(id, expiration):
+def update_expiration(id_, expiration):
     now = datetime.datetime.utcnow()
     if expiration <= calendar.timegm(now.utctimetuple()):
         raise(FesException("Expiration must be in the future."))
 
-    id_hash = generate_hash(id)
+    id_hash = generate_hash(id_)
 
     storage_cutoff_time = now + datetime.timedelta(minutes=STORAGE_CUTOFF_MINUTES)
 
@@ -74,10 +74,10 @@ def update_expiration(id, expiration):
             move_event_to_redis(id_hash, expiration, event)
         return
     
-    raise(FesException("Event " + id + " not found."))
+    raise(FesException("Event " + id_ + " not found."))
 
-def delete(id):
-    id_hash = generate_hash(id)
+def delete(id_):
+    id_hash = generate_hash(id_)
 
     #delete from redis first
     event = redis_data.get_and_delete(id_hash)

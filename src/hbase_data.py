@@ -18,10 +18,9 @@ def add(id_hash, expiration, payload):
     _write_event(id_hash, expiration, payload)
     _write_expiration_index(id_hash, expiration)
 
-def _write_event(id, expiration, payload):
-    rowkey = id
-    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
-    hbase_data = _generate_event_table_write_data(rowkey, str(expiration), payload)
+def _write_event(id_hash, expiration, payload):
+    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
+    hbase_data = _generate_event_table_write_data(id_hash, str(expiration), payload)
 
     _write_to_hbase(url, hbase_data)
 
@@ -67,16 +66,16 @@ def _write_to_hbase(url, data):
     headers = {"Content-Type" : "application/json"}
     hbase_response = requests.put(url, data=data, headers=headers)
 
-def _generate_event_table_write_data(id, expiration, payload):
+def _generate_event_table_write_data(id_hash, expiration, payload):
     column_value_dict = {
         COLUMN_FAMILY + ":" + PAYLOAD_COLUMN : payload,
         COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration)
     }
 
-    return _generate_hbase_write_data(id, column_value_dict)
+    return _generate_hbase_write_data(id_hash, column_value_dict)
 
-def _generate_index_write_data(id, expiration):
-    return _generate_hbase_write_data(id, { COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration) } )
+def _generate_index_write_data(id_hash, expiration):
+    return _generate_hbase_write_data(id_hash, { COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration) } )
 
 def _generate_hbase_write_data(rowkey, column_value_dict):
     row = OrderedDict([

@@ -11,33 +11,33 @@ from FesException import FesException
 
 app = Flask(__name__)
 
-@app.route('/add/<string:id>/<int:expiration>', methods=['POST'])
-def add(id, expiration):
+@app.route('/add/<string:id_>/<int:expiration>', methods=['POST'])
+def add(id_, expiration):
     try:
-        event = fes_controller.add(id, expiration, json.dumps(request.json))
+        event = fes_controller.add(id_, expiration, json.dumps(request.json))
         return jsonify(event.__dict__), 201
     except FesException as e:
         return jsonify({"error" : e.value}), 400
 
-@app.route('/update/expiration/<string:id>/<int:expiration>', methods=['PUT'])
-def update_expiration(id, expiration):
+@app.route('/update/expiration/<string:id_>/<int:expiration>', methods=['PUT'])
+def update_expiration(id_, expiration):
     try:
-        fes_controller.update_expiration(id, expiration)
+        fes_controller.update_expiration(id_, expiration)
         return jsonify({}), 200
     except FesException as e:
         return jsonify({"error" : e.value}), 400
 
-@app.route('/update/event/<string:id>', methods=['PUT'])
-def update_event(id):
+@app.route('/update/event/<string:id_>', methods=['PUT'])
+def update_event(id_):
     if request.json is None:
             abort(400)
 
-    redis_data.update_event(fes_controller.generate_hash(id), json.dumps(request.json))
+    redis_data.update_event(fes_controller.generate_hash(id_), json.dumps(request.json))
     return jsonify({}), 200
 
-@app.route('/delete/<string:id>', methods=['DELETE'])
-def delete(id):
-    fes_controller.delete(id)
+@app.route('/delete/<string:id_>', methods=['DELETE'])
+def delete(id_):
+    fes_controller.delete(id_)
     return jsonify({}), 200
 
 @app.errorhandler(404)
