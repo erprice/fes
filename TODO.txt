@@ -10,4 +10,3 @@ support more compact storage formats than strings...protobufs?
 add support for batch adds
 support arbitrary number of hbase index buckets, add this value to the properties file
 lock events while manipulating them
-bug: multiple events in hbase with the same expiration and salt prefix will overwrite in the index table
