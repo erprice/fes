@@ -21,7 +21,7 @@ def add(id, expiration, payload):
     storage_cutoff_time = now + datetime.timedelta(minutes=STORAGE_CUTOFF_MINUTES)
 
     # check for an existing hbase record
-    event = hbase_data.read_hbase_event(id_hash)
+    event = hbase_data.read_event(id_hash)
 
     #if the new expiration is within 15 minutes
     if expiration <= calendar.timegm(storage_cutoff_time.utctimetuple()):
@@ -32,15 +32,11 @@ def add(id, expiration, payload):
         #add to redis
         redis_data.add(id_hash, expiration, payload)
     else:
-        #delete redis data, if any
-        redis_data.delete(id_hash)
-
         #delete hbase index
         if event is not None:
-            hbase_data.delete_hbase_expiration(id_hash, event.expiration)
+            hbase_data.delete_from_expiration_index(id_hash, event.expiration)
 
-        #add to hbase
-        hbase_data.add(id_hash, expiration, payload)
+        move_event_to_hbase(id_hash, expiration, payload)
 
     return future_event(id_hash, payload, expiration)
 
@@ -62,21 +58,20 @@ def update_expiration(id, expiration):
         if expiration <= calendar.timegm(storage_cutoff_time.utctimetuple()):
             redis_data.update_expiration(id_hash, expiration)
         else:
-            _move_event_to_hbase(id_hash, expiration, payload)
+            move_event_to_hbase(id_hash, expiration, payload)
         return
 
     #retrieve event from hbase
-    event = hbase_data.read_hbase_event(id_hash)
+    event = hbase_data.read_event(id_hash)
 
     #it's in hbase
     if event is not None:
         #the new expiration is not within 15 minutes, just update hbase expiration
         if expiration > calendar.timegm(storage_cutoff_time.utctimetuple()):
-            hbase_data.delete_hbase_expiration(id_hash, event.expiration)
-            hbase_data.write_hbase_expiration_index(id_hash, expiration)
-            hbase_data.write_hbase_event(id_hash, expiration, event.payload)
+            hbase_data.delete_from_expiration_index(id_hash, event.expiration)
+            hbase_data.add(id_hash, expiration, event.payload)
         else:
-            _move_event_to_redis(id_hash, expiration, event)
+            move_event_to_redis(id_hash, expiration, event)
         return
     
     raise(FesException("Event " + id + " not found."))
@@ -90,27 +85,24 @@ def delete(id):
     #if it wasn't in redis, delete from hbase
     if event is None:
         #retrieve expiration so we can delete the index entry
-        event = hbase_data.read_hbase_event(id_hash)
+        event = hbase_data.read_event(id_hash)
 
         if event is not None:
             hbase_data.delete_all(id_hash, event.expiration)
 
-def _move_event_to_hbase(id_hash, expiration, payload):
+def move_event_to_hbase(id_hash, expiration, payload):
     if payload is None:
         raise(FesException("Error copying event " + id_hash + " to hbase. Data not found."))
 
     redis_data.delete(id_hash)
+    hbase_data.add(id_hash, expiration, payload)
 
-    #add both entries to hbase
-    hbase_data.write_hbase_event(id_hash, expiration, payload)
-    hbase_data.write_hbase_expiration_index(id_hash, expiration)
-
-def _move_event_to_redis(id_hash, expiration, event):
+def move_event_to_redis(id_hash, expiration, event):
     if event is None:
         raise(FesException("Error copying event " + id_hash + " to redis. Data not found."))
 
-    #delete both entries from hbase
-    hbase_data.delete_hbase_event(id_hash)
-    hbase_data.delete_hbase_expiration(id_hash, event.expiration)
+    if expiration is None:
+        expiration = event.expiration
 
+    hbase_data.delete_all(id_hash, event.expiration)
     redis_data.add(id_hash, expiration, event.payload)

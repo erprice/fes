@@ -15,17 +15,17 @@ PAYLOAD_COLUMN = "payload"
 EXPIRATION_COLUMN = "expiration"
 
 def add(id_hash, expiration, payload):
-    write_hbase_event(id_hash, expiration, payload)
-    write_hbase_expiration_index(id_hash, expiration)
+    _write_event(id_hash, expiration, payload)
+    _write_expiration_index(id_hash, expiration)
 
-def write_hbase_event(id, expiration, payload):
+def _write_event(id, expiration, payload):
     rowkey = id
     url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
     hbase_data = _generate_event_table_write_data(rowkey, str(expiration), payload)
 
     _write_to_hbase(url, hbase_data)
 
-def write_hbase_expiration_index(id_hash, expiration):
+def _write_expiration_index(id_hash, expiration):
     rowkey = _generate_salted_row_key(id_hash, expiration)
     url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
     hbase_data = _generate_index_write_data(rowkey, id_hash)
@@ -33,19 +33,19 @@ def write_hbase_expiration_index(id_hash, expiration):
     _write_to_hbase(url, hbase_data)
 
 def delete_all(id_hash, expiration):
-    delete_hbase_event(id_hash)
-    delete_hbase_expiration(id_hash, expiration)
+    _delete_event(id_hash)
+    delete_from_expiration_index(id_hash, expiration)
 
-def delete_hbase_event(id_hash):
+def _delete_event(id_hash):
     url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash
     hbase_response = requests.delete(url)
 
-def delete_hbase_expiration(id_hash, expiration):
+def delete_from_expiration_index(id_hash, expiration):
     rowkey = _generate_salted_row_key(id_hash, expiration)
     url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey
     hbase_response = requests.delete(url)
 
-def read_hbase_event(id_hash):
+def read_event(id_hash):
     url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash
 
     headers = {"Accept" : "application/json"}
@@ -55,7 +55,7 @@ def read_hbase_event(id_hash):
         return None
 
     hbase_data = json.loads(hbase_response.text)
-    futureEvent = _get_event_from_hbase_response(hbase_data)
+    futureEvent = _marshall_event_from_hbase_response(hbase_data)
 
     return futureEvent;
 
@@ -97,7 +97,7 @@ def _generate_hbase_write_data(rowkey, column_value_dict):
 
     return json.dumps(data)
 
-def _get_event_from_hbase_response(data):
+def _marshall_event_from_hbase_response(data):
     for row in data['Row']:
         payload = ""
         expiration = ""

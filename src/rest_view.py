@@ -49,6 +49,6 @@ def not_found(error):
     return make_response(jsonify({'error': error}), 400)
 
 if __name__ == '__main__':
-    queueConsumer = queue_consumer()
-    queueConsumer.start()
+    queue_consumer = queue_consumer()
+    queue_consumer.start()
     app.run(debug=True)
