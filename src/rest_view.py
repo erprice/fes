@@ -9,6 +9,8 @@ from queue_consumer import queue_consumer
 import fes_controller
 from FesException import FesException
 
+SCANNER_PREFIXES = ['%x' % x + '_' for x in xrange(0,16)]
+
 app = Flask(__name__)
 
 @app.route('/add/<string:id_>/<int:expiration>', methods=['POST'])

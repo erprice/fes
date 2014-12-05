@@ -58,6 +58,30 @@ def read_event(id_hash):
 
     return futureEvent;
 
+def scan_expiration_index(start_row, end_row):
+    scanner_id = _submit_scanner(start_row, end_row)
+    return _read_scanner_results(scanner_id)
+
+def _submit_scanner(start_row, end_row):
+    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/scanner"
+    headers={'Content-Type': 'application/json'}
+    data = {
+        "startRow": base64.b64encode(start_row),
+        "endRow":base64.b64encode(end_row)
+    }
+
+    scanner_response = requests.post(url, data=json.dumps(data), headers=headers)
+    scanner_id = scanner_response.headers['location'].split("/")[5]
+
+    return scanner_id
+
+def _read_scanner_results(scanner_id):
+    headers = {'Accept': 'application/json'}
+
+    read_next_response = requests.get(HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/scanner/" + scanner_id, headers=headers)
+    if read_next_response.status_code == 200:
+        return _get_id_hashes_from_hbase_response(json.loads(read_next_response.text))
+
 """salt the start of the hbase rowkey to prevent hotspotting on writes"""
 def _generate_salted_row_key(key, expiration):
     return key[:1] + "_" + str(expiration)
