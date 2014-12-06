@@ -64,7 +64,7 @@ def scan_expiration_index(start_row, end_row):
 
 def _submit_scanner(start_row, end_row):
     url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/scanner"
-    headers={'Content-Type': 'application/json'}
+    headers = {'Content-Type': 'application/json'}
     data = {
         "startRow": base64.b64encode(start_row),
         "endRow":base64.b64encode(end_row)
@@ -139,18 +139,15 @@ def _marshall_event_from_hbase_response(data):
 
     return future_event(None, payload, expiration)
 
-def _get_id_hash_from_hbase_response(data):
+def _get_id_hashes_from_hbase_response(data):
+    id_hashes = []
+
     for row in data['Row']:
-        expiration = ""
-        
         for cell in row['Cell']:
             column = base64.b64decode(cell['column'])
-            value = cell['$']
-
-            if value is None:
+            if column is None:
                 continue
+            else:
+                id_hashes.append(column.split(":")[1])
 
-            if column == COLUMN_FAMILY + ":" + EXPIRATION_COLUMN:
-                expiration = base64.b64decode(str(value))
-
-    return expiration
+    return id_hashes

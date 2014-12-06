@@ -6,6 +6,7 @@ import hbase_data
 import redis_data
 from future_event import future_event
 from queue_consumer import queue_consumer
+from marshalling_agent import marshalling_agent
 import fes_controller
 from FesException import FesException
 
@@ -51,6 +52,14 @@ def not_found(error):
     return make_response(jsonify({'error': error}), 400)
 
 if __name__ == '__main__':
+    #run the daemon that fires events from redis
     queue_consumer = queue_consumer()
     queue_consumer.start()
+
+    #run the daemons that move events from hbase into redis
+    for start_row in SCANNER_PREFIXES:
+        print "starting marshalling_agent start_row=" + start_row
+        marshalling_agent(start_row).start()
+
+    print "starting rest app"
     app.run(debug=True)
