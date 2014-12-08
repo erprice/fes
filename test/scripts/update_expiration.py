@@ -3,7 +3,6 @@
 import requests
 import calendar
 import datetime
-import json
 import sys
 
 future = calendar.timegm(datetime.datetime.utcnow().utctimetuple()) + int(sys.argv[2])

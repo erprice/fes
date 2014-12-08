@@ -5,7 +5,6 @@ import calendar
 import datetime
 import json
 import sys
-import time
 
 if len(sys.argv) < 4:
     print "Usage: add.py <key> <num_seconds> <num_events>"

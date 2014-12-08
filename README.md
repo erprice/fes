@@ -18,8 +18,8 @@ The REST interface has four calls:
 - update expiration
 - delete
 
-Python dependencies include: flask, hashlib, redis, dateutil, requests. Obviously, you must also have 
-redis and hbase installed and running. Fes uses the hbase REST client.
+Python dependencies include: flask, hashlib, redis, dateutil, requests, nose. Obviously, you must also 
+have redis and hbase installed and running. Fes uses the hbase REST client.
 
 NOTE: Fes is a work in progress. Not all REST endpoints are functional. There is also a laundry list 
 of improvements in TODO.txt
