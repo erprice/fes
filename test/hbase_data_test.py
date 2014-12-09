@@ -1,17 +1,7 @@
 import hbase_data
 import base64
-import uuid
-from random import randint
 import json
-
-TEST_PAYLOAD = '{"a list" : ["a list item"], "a string" : "string value"}'
-
-def get_random_string():
-    return str(uuid.uuid1())
-
-"""get a random 10 digit int"""
-def get_random_int():
-    return randint(1000000000, 9999999999)
+import test_utils
 
 def test_generate_salted_rowkey():
     rowkey = "asdf"
@@ -21,8 +11,8 @@ def test_generate_salted_rowkey():
     assert hbase_data._generate_salted_row_key(rowkey, expiration) == salted_rowkey
 
 def test_marshall_event_from_hbase_response():
-    expiration = str(get_random_int())
-    id_hash = get_random_string()
+    expiration = str(test_utils.get_random_int())
+    id_hash = test_utils.get_random_string()
 
     data = {
         'Row': [
@@ -31,7 +21,7 @@ def test_marshall_event_from_hbase_response():
                     {
                         'column': base64.b64encode(hbase_data.COLUMN_FAMILY + ":" + hbase_data.PAYLOAD_COLUMN),
                         'timestamp': 1418015414582, 
-                        '$': base64.b64encode(TEST_PAYLOAD)
+                        '$': base64.b64encode(test_utils.TEST_PAYLOAD)
                     }, 
                     {
                         'column': base64.b64encode(hbase_data.COLUMN_FAMILY + ":" + hbase_data.EXPIRATION_COLUMN),
@@ -46,15 +36,15 @@ def test_marshall_event_from_hbase_response():
 
     future_event = hbase_data._marshall_event_from_hbase_response(data)
 
-    assert future_event.payload == TEST_PAYLOAD
+    assert future_event.payload == test_utils.TEST_PAYLOAD
     assert future_event.expiration == expiration
     assert future_event.id_ is None
 
 def test_get_id_hashes_from_hbase_response():
-    id_hashes = [get_random_string(), get_random_string()]
+    id_hashes = [test_utils.get_random_string(), test_utils.get_random_string()]
     salted_rowkeys = [
-        hbase_data._generate_salted_row_key(id_hashes[0], get_random_int()), 
-        hbase_data._generate_salted_row_key(id_hashes[1], get_random_int())
+        hbase_data._generate_salted_row_key(id_hashes[0], test_utils.get_random_int()), 
+        hbase_data._generate_salted_row_key(id_hashes[1], test_utils.get_random_int())
     ]
 
     data = {
@@ -87,42 +77,42 @@ def test_get_id_hashes_from_hbase_response():
     assert result == id_hashes
 
 def test_add_and_read_event():
-    id_hash = get_random_string()
-    expiration = str(get_random_int())
+    id_hash = test_utils.get_random_string()
+    expiration = str(test_utils.get_random_int())
 
-    hbase_data.add(id_hash, expiration, TEST_PAYLOAD)
+    hbase_data.add(id_hash, expiration, test_utils.TEST_PAYLOAD)
     future_event = hbase_data.read_event(id_hash)
 
     assert future_event is not None
     assert future_event.id_ is None
     assert future_event.expiration == expiration
-    assert future_event.payload == TEST_PAYLOAD
+    assert future_event.payload == test_utils.TEST_PAYLOAD
 
 def test_add_and_read_expiration():
-    id_hash = get_random_string()
-    expiration = get_random_int()
+    id_hash = test_utils.get_random_string()
+    expiration = test_utils.get_random_int()
 
-    hbase_data.add(id_hash, expiration, TEST_PAYLOAD)
+    hbase_data.add(id_hash, expiration, test_utils.TEST_PAYLOAD)
     start_row = hbase_data._generate_salted_row_key(id_hash, expiration)
     end_row = hbase_data._generate_salted_row_key(id_hash, expiration + 1)
     id_hashes = hbase_data.scan_expiration_index(start_row, end_row)
     assert id_hashes == [id_hash]
 
 def test_add_and_delete_all():
-    id_hash = get_random_string()
-    expiration = str(get_random_int())
+    id_hash = test_utils.get_random_string()
+    expiration = str(test_utils.get_random_int())
 
-    hbase_data.add(id_hash, expiration, TEST_PAYLOAD)
+    hbase_data.add(id_hash, expiration, test_utils.TEST_PAYLOAD)
     hbase_data.delete_all(id_hash, expiration)
     future_event = hbase_data.read_event(id_hash)
 
     assert future_event is None
 
 def test_add_and_delete_from_expiration_index():
-    id_hash = get_random_string()
-    expiration = get_random_int()
+    id_hash = test_utils.get_random_string()
+    expiration = test_utils.get_random_int()
 
-    hbase_data.add(id_hash, expiration, TEST_PAYLOAD)
+    hbase_data.add(id_hash, expiration, test_utils.TEST_PAYLOAD)
     hbase_data.delete_from_expiration_index(id_hash, expiration)
     
     #expiration is still stored on the event
@@ -130,7 +120,7 @@ def test_add_and_delete_from_expiration_index():
     assert future_event is not None
     assert future_event.id_ is None
     assert future_event.expiration == str(expiration)
-    assert future_event.payload == TEST_PAYLOAD
+    assert future_event.payload == test_utils.TEST_PAYLOAD
 
     #but we won't be able to find it if we scan for it
     start_row = hbase_data._generate_salted_row_key(id_hash, expiration)
