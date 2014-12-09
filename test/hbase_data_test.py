@@ -2,6 +2,7 @@ import hbase_data
 import base64
 import uuid
 from random import randint
+import json
 
 TEST_PAYLOAD = '{"a list" : ["a list item"], "a string" : "string value"}'
 
@@ -136,3 +137,32 @@ def test_add_and_delete_from_expiration_index():
     end_row = hbase_data._generate_salted_row_key(id_hash, expiration + 1)
     id_hashes = hbase_data.scan_expiration_index(start_row, end_row)
     assert id_hashes is None
+
+def test_generate_hbase_write_data():
+    column_value_dict = {
+        "column_family:column" : "value",
+        "column_family:another_column" : "another_value"
+    }
+
+    data = hbase_data._generate_hbase_write_data(column_value_dict)
+
+    expected_result = {
+        'Row': [
+            {
+                'Cell': [
+                    {
+                        'column': base64.b64encode("column_family:column"),
+                        '$': base64.b64encode("value")
+                    },
+                    {
+                        'column': base64.b64encode("column_family:another_column"),
+                        '$': base64.b64encode("another_value")
+                    }
+                ]
+            }
+        ]
+    }
+
+    print data
+    print expected_result
+    assert data == json.dumps(expected_result)

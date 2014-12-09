@@ -20,14 +20,14 @@ def add(id_hash, expiration, payload):
 
 def _write_event(id_hash, expiration, payload):
     url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
-    hbase_data = _generate_event_table_write_data(id_hash, str(expiration), payload)
+    hbase_data = _generate_event_table_write_data(str(expiration), payload)
 
     _write_to_hbase(url, hbase_data)
 
 def _write_expiration_index(id_hash, expiration):
     rowkey = _generate_salted_row_key(id_hash, expiration)
     url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
-    hbase_data = _generate_index_write_data(rowkey, id_hash)
+    hbase_data = _generate_index_write_data(id_hash)
 
     _write_to_hbase(url, hbase_data)
 
@@ -90,22 +90,18 @@ def _write_to_hbase(url, data):
     headers = {"Content-Type" : "application/json"}
     hbase_response = requests.put(url, data=data, headers=headers)
 
-def _generate_event_table_write_data(id_hash, expiration, payload):
+def _generate_event_table_write_data(expiration, payload):
     column_value_dict = {
         COLUMN_FAMILY + ":" + PAYLOAD_COLUMN : payload,
         COLUMN_FAMILY + ":" + EXPIRATION_COLUMN : str(expiration)
     }
 
-    return _generate_hbase_write_data(id_hash, column_value_dict)
+    return _generate_hbase_write_data(column_value_dict)
 
-def _generate_index_write_data(salted_expiration, id_hash):
-    return _generate_hbase_write_data(salted_expiration, { COLUMN_FAMILY + ":" + id_hash : "" } )
+def _generate_index_write_data(id_hash):
+    return _generate_hbase_write_data({ COLUMN_FAMILY + ":" + id_hash : "" } )
 
-def _generate_hbase_write_data(rowkey, column_value_dict):
-    row = OrderedDict([
-        ("key", base64.b64encode(rowkey))
-    ])
-
+def _generate_hbase_write_data(column_value_dict):
     cells = []
     cell = {"Cell" : cells}
     for key in column_value_dict:
@@ -115,7 +111,6 @@ def _generate_hbase_write_data(rowkey, column_value_dict):
         }
         cells.append(cell_entries)
 
-    row.update( { "Cell" : cells} )
     data = { "Row" : [cell] }
 
     return json.dumps(data)
