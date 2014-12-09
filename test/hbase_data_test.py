@@ -163,6 +163,4 @@ def test_generate_hbase_write_data():
         ]
     }
 
-    print data
-    print expected_result
     assert data == json.dumps(expected_result)
