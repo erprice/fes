@@ -120,13 +120,3 @@ def test_get_expiration_range_lower_bounded():
     results = redis_data.get_expiration_range(start_time + 2, "+inf")
 
     assert results[:8] == expected_results[2:]
-
-
-
-
-
-
-
-
-
-
