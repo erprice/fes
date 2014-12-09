@@ -36,7 +36,7 @@ def add(id_, expiration, payload):
         if event is not None:
             hbase_data.delete_from_expiration_index(id_hash, event.expiration)
 
-        move_event_to_hbase(id_hash, expiration, payload)
+        _move_event_to_hbase(id_hash, expiration, payload)
 
     return future_event(id_hash, payload, expiration)
 
@@ -58,7 +58,7 @@ def update_expiration(id_, expiration):
         if expiration <= calendar.timegm(storage_cutoff_time.utctimetuple()):
             redis_data.update_expiration(id_hash, expiration)
         else:
-            move_event_to_hbase(id_hash, expiration, payload)
+            _move_event_to_hbase(id_hash, expiration, payload)
         return
 
     #retrieve event from hbase
@@ -71,10 +71,13 @@ def update_expiration(id_, expiration):
             hbase_data.delete_from_expiration_index(id_hash, event.expiration)
             hbase_data.add(id_hash, expiration, event.payload)
         else:
-            move_event_to_redis(id_hash, expiration, event)
+            _move_event_to_redis(id_hash, expiration, event)
         return
     
     raise(FesException("Event " + id_ + " not found."))
+
+def update_event_payload(id_, payload):
+    return
 
 def delete(id_):
     id_hash = generate_hash(id_)
@@ -90,14 +93,14 @@ def delete(id_):
         if event is not None:
             hbase_data.delete_all(id_hash, event.expiration)
 
-def move_event_to_hbase(id_hash, expiration, payload):
+def _move_event_to_hbase(id_hash, expiration, payload):
     if payload is None:
         raise(FesException("Error copying event " + id_hash + " to hbase. Data not found."))
 
     redis_data.delete(id_hash)
     hbase_data.add(id_hash, expiration, payload)
 
-def move_event_to_redis(id_hash, expiration, event):
+def _move_event_to_redis(id_hash, expiration, event):
     if event is None:
         raise(FesException("Error copying event " + id_hash + " to redis. Data not found."))
 

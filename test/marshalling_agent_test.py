@@ -2,15 +2,13 @@ from marshalling_agent import marshalling_agent
 import hbase_data
 import redis_data
 import fes_controller
-import calendar
-import datetime
 from FesException import FesException
 import test_utils
 
 def test_scan_for_hbase_expirations():
     id_hash = test_utils.get_random_string()
     #now plus 15 minutes, minus 1 second
-    expiration = calendar.timegm(datetime.datetime.utcnow().utctimetuple()) + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 1
+    expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 1
     rowkey_prefix = id_hash[:1] + "_"
 
     my_marshalling_agent = marshalling_agent(rowkey_prefix)
