@@ -7,8 +7,18 @@ implement hbase retries
 create a properties file
 support more compact storage formats than strings...protobufs?
 add support for batch adds
-support arbitrary number of hbase index buckets, add this value to the properties file
+support configurable number of hbase index buckets, add this value to the properties file
 lock events while manipulating them
 semi-randomize the sleep interval for marshalling_agent to distribute spiky hbase load
 better error handling (this goes along with retries)
 benchmarking
+set up a virtualenv install script
+document REST interface with RAML
+logging (this goes with error handling)
+
+
+FANCY IDEAS
+use vagrant to script a fes virtual machine, have a one-line command to start up a FES instance
+load events from redis into local memory for millisecond-level granularity
+store super long-term events in hdfs sequence files, use mapreduce to load them into hbase
+-> can't edit sequence files, so m/r would have to read updates for each event to determine the current status

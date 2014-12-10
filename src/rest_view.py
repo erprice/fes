@@ -8,8 +8,6 @@ from marshalling_agent import marshalling_agent
 import fes_controller
 from FesException import FesException
 
-SCANNER_PREFIXES = ['%x' % x + '_' for x in xrange(0,16)]
-
 app = Flask(__name__)
 
 @app.route('/add/<string:id_>/<int:expiration>', methods=['POST'])
@@ -55,8 +53,11 @@ if __name__ == '__main__':
     queue_consumer = queue_consumer()
     queue_consumer.start()
 
+    #['1_', '2_', ... 'f_']
+    scanner_prefixes = ['%x' % x + '_' for x in xrange(0,16)]
+
     #run the daemons that move events from hbase into redis
-    for start_row in SCANNER_PREFIXES:
+    for start_row in scanner_prefixes:
         print "Starting marshalling_agent start_row=" + start_row
         marshalling_agent(start_row).start()
 
