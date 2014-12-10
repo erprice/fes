@@ -15,10 +15,10 @@ PAYLOAD_COLUMN = "payload"
 EXPIRATION_COLUMN = "expiration"
 
 def add(id_hash, expiration, payload):
-    _write_event(id_hash, expiration, payload)
+    write_event(id_hash, expiration, payload)
     _write_expiration_index(id_hash, expiration)
 
-def _write_event(id_hash, expiration, payload):
+def write_event(id_hash, expiration, payload):
     url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
     hbase_data = _generate_event_table_write_data(str(expiration), payload)
 

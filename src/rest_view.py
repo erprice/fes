@@ -33,7 +33,7 @@ def update_event(id_):
     if request.json is None:
             abort(400)
 
-    redis_data.update_event(fes_controller.generate_hash(id_), json.dumps(request.json))
+    fes_controller.update_event_payload(id_, json.dumps(request.json))
     return jsonify({}), 200
 
 @app.route('/delete/<string:id_>', methods=['DELETE'])

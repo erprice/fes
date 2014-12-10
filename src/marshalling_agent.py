@@ -48,8 +48,4 @@ class marshalling_agent(Thread):
         if future_event is None:
             raise(FesException("Failed to retrieve event from hbase hash_id=" + id_hash))
         else:
-            #write to redis
-            redis_data.add(id_hash, future_event.expiration, future_event.payload)
-
-            #delete from hbase
-            hbase_data.delete_all(id_hash, future_event.expiration)
+            fes_controller.move_event_to_redis(id_hash, None, future_event)

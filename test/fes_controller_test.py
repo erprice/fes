@@ -170,7 +170,7 @@ def test_update_expiration_to_redis_already_in_hbase():
 
 """==================================================test update event==============================================="""
 
-def test_update_event_payload_to_redis_already_in_redis():
+def test_update_event_payload_in_redis():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
     expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
@@ -178,11 +178,11 @@ def test_update_event_payload_to_redis_already_in_redis():
     fes_controller.add(id_, expiration, test_utils.TEST_PAYLOAD)
     fes_controller.update_event_payload(id_, UPDATED_TEST_PAYLOAD)
     
-    assert redis_data.get_expiration(id_hash) == expiration
+    assert int(redis_data.get_expiration(id_hash)) == expiration
     assert redis_data.get_event_payload(id_hash) == UPDATED_TEST_PAYLOAD
     assert hbase_data.read_event(id_hash) is None
 
-def test_update_event_payload_to_hbase_already_in_hbase():
+def test_update_event_payload_in_hbase():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
     expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
@@ -198,34 +198,6 @@ def test_update_event_payload_to_hbase_already_in_hbase():
     assert future_event.id_ is None
     assert future_event.expiration == str(expiration)
     assert future_event.payload == UPDATED_TEST_PAYLOAD
-
-def test_update_event_payload_to_hbase_already_in_redis():
-    id_ = test_utils.get_random_string()
-    id_hash = fes_controller.generate_hash(id_)
-    expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
-
-    fes_controller.add(id_, expiration, test_utils.TEST_PAYLOAD)
-    fes_controller.update_event_payload(id_, UPDATED_TEST_PAYLOAD)
-    
-    assert redis_data.get_expiration(id_hash) is None
-    assert redis_data.get_event_payload(id_hash) is None
-    future_event = hbase_data.read_event(id_hash)
-    assert future_event is not None
-    assert future_event.id_ is None
-    assert future_event.expiration == str(expiration)
-    assert future_event.payload == UPDATED_TEST_PAYLOAD
-
-def test_update_event_payload_to_redis_already_in_hbase():
-    id_ = test_utils.get_random_string()
-    id_hash = fes_controller.generate_hash(id_)
-    expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
-
-    fes_controller.add(id_, expiration, test_utils.TEST_PAYLOAD)
-    fes_controller.update_event_payload(id_, UPDATED_TEST_PAYLOAD)
-    
-    assert redis_data.get_expiration(id_hash) == expiration
-    assert redis_data.get_event_payload(id_hash) == UPDATED_TEST_PAYLOAD
-    assert hbase_data.read_event(id_hash) is None
 
 """==================================================test delete==============================================="""
 def test_delete_from_redis():
