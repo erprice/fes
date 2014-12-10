@@ -60,4 +60,4 @@ if __name__ == '__main__':
         print "Starting marshalling_agent start_row=" + start_row
         marshalling_agent(start_row).start()
 
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)

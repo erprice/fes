@@ -41,7 +41,7 @@ def _delete_event(id_hash):
 
 def delete_from_expiration_index(id_hash, expiration):
     rowkey = _generate_salted_row_key(id_hash, expiration)
-    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey
+    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + id_hash
     hbase_response = requests.delete(url)
 
 def read_event(id_hash):
