@@ -6,7 +6,7 @@ import calendar
 TEST_PAYLOAD = '{"a list" : ["a list item"], "a string" : "string value"}'
 
 def get_random_string():
-    return str(uuid.uuid1())
+    return str(uuid.uuid4())
 
 """get a random 10 digit int"""
 def get_random_int():

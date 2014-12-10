@@ -154,3 +154,21 @@ def test_generate_hbase_write_data():
     }
 
     assert data == json.dumps(expected_result)
+
+def test_delete_from_expiration_index_doesnt_clobber_other_entries():
+    id_hash = test_utils.get_random_string()
+    #the alternate id hash needs to have the same first character
+    alternate_id_hash = id_hash + "asdf"
+    expiration = test_utils.get_random_int()
+
+    hbase_data._write_expiration_index(id_hash, expiration)
+    hbase_data._write_expiration_index(alternate_id_hash, expiration)
+
+    hbase_data.delete_from_expiration_index(id_hash, expiration)
+
+    start_row = hbase_data._generate_salted_row_key(id_hash, expiration)
+    end_row = start_row
+
+    id_hashes = hbase_data.scan_expiration_index(start_row, end_row)
+    
+    assert id_hashes == [alternate_id_hash]

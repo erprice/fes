@@ -12,4 +12,3 @@ support arbitrary number of hbase index buckets, add this value to the propertie
 lock events while manipulating them
 bug: deleting one event will wipe out the hbase index for all events of the same expiration (and salt prefix)
 bug: rest_view.py executes twice, starting twice as many daemons as needed
-update hbase event is not very efficient, it updates both table entries when it only needs to update one
