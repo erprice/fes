@@ -166,9 +166,6 @@ def test_delete_from_expiration_index_doesnt_clobber_other_entries():
 
     hbase_data.delete_from_expiration_index(id_hash, expiration)
 
-    start_row = hbase_data._generate_salted_row_key(id_hash, expiration)
-    end_row = start_row
-
-    id_hashes = hbase_data.scan_expiration_index(start_row, end_row)
+    id_hashes = test_utils.scan_index(id_hash, expiration)
     
     assert id_hashes == [alternate_id_hash]

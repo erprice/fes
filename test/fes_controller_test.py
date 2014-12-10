@@ -2,6 +2,7 @@ import fes_controller
 import redis_data
 import hbase_data
 import test_utils
+from random import randint
 
 UPDATED_TEST_PAYLOAD = '{"a different list" : "some other stuff", "hark, a test datum" : ["this time with a", "two item list"]}'
 
@@ -21,18 +22,19 @@ def test_generate_hash():
 def test_add_redis_only():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
+    expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(1, 900)
 
     fes_controller.add(id_, expiration, test_utils.TEST_PAYLOAD)
 
     assert redis_data.get_expiration(id_hash) == expiration
     assert redis_data.get_event_payload(id_hash) == test_utils.TEST_PAYLOAD
     assert hbase_data.read_event(id_hash) is None
+    assert test_utils.scan_index(id_hash, expiration) is None
 
 def test_add_hbase_only():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
+    expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(1, 900)
 
     fes_controller.add(id_, expiration, test_utils.TEST_PAYLOAD)
 
@@ -43,12 +45,13 @@ def test_add_hbase_only():
     assert future_event.id_ is None
     assert future_event.expiration == str(expiration)
     assert future_event.payload == test_utils.TEST_PAYLOAD
+    assert test_utils.scan_index(id_hash, expiration) == [id_hash]
 
 def test_add_to_hbase_already_in_hbase():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
-    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 15
+    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(1, 450)
+    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(451, 900)
 
     fes_controller.add(id_, original_expiration, test_utils.TEST_PAYLOAD)
     fes_controller.add(id_, updated_expiration, UPDATED_TEST_PAYLOAD)
@@ -61,12 +64,14 @@ def test_add_to_hbase_already_in_hbase():
     assert future_event.id_ is None
     assert future_event.expiration == str(updated_expiration)
     assert future_event.payload == UPDATED_TEST_PAYLOAD
+    assert test_utils.scan_index(id_hash, original_expiration) is None
+    assert test_utils.scan_index(id_hash, updated_expiration) == [id_hash]
 
 def test_add_to_redis_already_in_redis():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
-    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 15
+    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(1, 450)
+    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(450, 900)
 
     fes_controller.add(id_, original_expiration, test_utils.TEST_PAYLOAD)
     fes_controller.add(id_, updated_expiration, UPDATED_TEST_PAYLOAD)
@@ -74,12 +79,14 @@ def test_add_to_redis_already_in_redis():
     assert redis_data.get_expiration(id_hash) == updated_expiration
     assert redis_data.get_event_payload(id_hash) == UPDATED_TEST_PAYLOAD
     assert hbase_data.read_event(id_hash) is None
+    assert test_utils.scan_index(id_hash, original_expiration) is None
+    assert test_utils.scan_index(id_hash, updated_expiration) is None
 
 def test_add_to_hbase_already_in_redis():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
-    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
+    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(1, 900)
+    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(1, 900)
 
     fes_controller.add(id_, original_expiration, test_utils.TEST_PAYLOAD)
     fes_controller.add(id_, updated_expiration, UPDATED_TEST_PAYLOAD)
@@ -91,12 +98,14 @@ def test_add_to_hbase_already_in_redis():
     assert future_event.id_ is None
     assert future_event.expiration == str(updated_expiration)
     assert future_event.payload == UPDATED_TEST_PAYLOAD
+    assert test_utils.scan_index(id_hash, original_expiration) is None
+    assert test_utils.scan_index(id_hash, updated_expiration) == [id_hash]
 
 def test_add_to_redis_already_in_hbase():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
-    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
+    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(1, 900)
+    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(1, 900)
 
     fes_controller.add(id_, original_expiration, test_utils.TEST_PAYLOAD)
     fes_controller.add(id_, updated_expiration, UPDATED_TEST_PAYLOAD)
@@ -104,14 +113,16 @@ def test_add_to_redis_already_in_hbase():
     assert redis_data.get_expiration(id_hash) == updated_expiration
     assert redis_data.get_event_payload(id_hash) == UPDATED_TEST_PAYLOAD
     assert hbase_data.read_event(id_hash) is None
+    assert test_utils.scan_index(id_hash, original_expiration) is None
+    assert test_utils.scan_index(id_hash, updated_expiration) is None
 
 """==================================================test update expiration==============================================="""
 
 def test_update_expiration_to_redis_already_in_redis():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
-    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 15
+    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(1, 450)
+    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(451, 900)
 
     fes_controller.add(id_, original_expiration, test_utils.TEST_PAYLOAD)
     fes_controller.update_expiration(id_, updated_expiration)
@@ -119,12 +130,14 @@ def test_update_expiration_to_redis_already_in_redis():
     assert redis_data.get_expiration(id_hash) == updated_expiration
     assert redis_data.get_event_payload(id_hash) == test_utils.TEST_PAYLOAD
     assert hbase_data.read_event(id_hash) is None
+    assert test_utils.scan_index(id_hash, original_expiration) is None
+    assert test_utils.scan_index(id_hash, updated_expiration) is None
 
 def test_update_expiration_to_hbase_already_in_hbase():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
-    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 15
+    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(1, 450)
+    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(451, 900)
 
     fes_controller.add(id_, original_expiration, test_utils.TEST_PAYLOAD)
     fes_controller.update_expiration(id_, updated_expiration)
@@ -137,12 +150,14 @@ def test_update_expiration_to_hbase_already_in_hbase():
     assert future_event.id_ is None
     assert future_event.expiration == str(updated_expiration)
     assert future_event.payload == test_utils.TEST_PAYLOAD
+    assert test_utils.scan_index(id_hash, original_expiration) is None
+    assert test_utils.scan_index(id_hash, updated_expiration) == [id_hash]
 
 def test_update_expiration_to_hbase_already_in_redis():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
-    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
+    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(1, 900)
+    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(1, 900)
 
     fes_controller.add(id_, original_expiration, test_utils.TEST_PAYLOAD)
     fes_controller.update_expiration(id_, updated_expiration)
@@ -154,12 +169,14 @@ def test_update_expiration_to_hbase_already_in_redis():
     assert future_event.id_ is None
     assert future_event.expiration == str(updated_expiration)
     assert future_event.payload == test_utils.TEST_PAYLOAD
+    assert test_utils.scan_index(id_hash, original_expiration) is None
+    assert test_utils.scan_index(id_hash, updated_expiration) == [id_hash]
 
 def test_update_expiration_to_redis_already_in_hbase():
     id_ = test_utils.get_random_string()
     id_hash = fes_controller.generate_hash(id_)
-    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + 10
-    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - 10
+    original_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) + randint(1, 900)
+    updated_expiration = test_utils.get_current_timestamp() + (fes_controller.STORAGE_CUTOFF_MINUTES * 60) - randint(1, 900)
 
     fes_controller.add(id_, original_expiration, test_utils.TEST_PAYLOAD)
     fes_controller.update_expiration(id_, updated_expiration)
@@ -167,6 +184,8 @@ def test_update_expiration_to_redis_already_in_hbase():
     assert redis_data.get_expiration(id_hash) == updated_expiration
     assert redis_data.get_event_payload(id_hash) == test_utils.TEST_PAYLOAD
     assert hbase_data.read_event(id_hash) is None
+    assert test_utils.scan_index(id_hash, original_expiration) is None
+    assert test_utils.scan_index(id_hash, updated_expiration) is None
 
 """==================================================test update event==============================================="""
 
@@ -211,6 +230,7 @@ def test_delete_from_redis():
     assert redis_data.get_expiration(id_hash) is None
     assert redis_data.get_event_payload(id_hash) is None
     assert hbase_data.read_event(id_hash) is None
+    assert test_utils.scan_index(id_hash, expiration) is None
 
 def test_delete_from_hbase():
     id_ = test_utils.get_random_string()
@@ -223,3 +243,4 @@ def test_delete_from_hbase():
     assert redis_data.get_expiration(id_hash) is None
     assert redis_data.get_event_payload(id_hash) is None
     assert hbase_data.read_event(id_hash) is None
+    assert test_utils.scan_index(id_hash, expiration) is None
