@@ -1,3 +1,4 @@
+from __future__ import print_function
 import redis_data
 import hbase_data
 import fes_controller
@@ -28,7 +29,7 @@ class marshalling_agent(Thread):
                 try:
                     self._marshall_event_into_redis(id_hash)
                 except FesException as e:
-                    print e.value
+                    print(str(e))
 
     def _scan_for_hbase_expirations(self):
         start_time = calendar.timegm(datetime.datetime.utcnow().utctimetuple())

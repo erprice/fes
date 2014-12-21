@@ -1,3 +1,4 @@
+from __future__ import print_function
 import redis_data
 from future_event import future_event
 import calendar
@@ -16,7 +17,7 @@ class queue_consumer(threading.Thread):
         while True:
             now = calendar.timegm(datetime.datetime.utcnow().utctimetuple())
             event_ids = redis_data.get_expiration_range("-inf", now)
-            
+
             #if there is no work to do, sleep for 1 second
             if event_ids is None:
                 time.sleep(1)
@@ -27,4 +28,4 @@ class queue_consumer(threading.Thread):
                         headers={'Content-Type': 'application/json'})
 
                     #TODO delete me
-                    print "expiring event: " + future_event.payload
+                    print("expiring event: " + future_event.payload)

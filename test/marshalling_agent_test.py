@@ -50,6 +50,6 @@ def test_marshall_event_into_redis_event_not_found():
 
     try:
         my_marshalling_agent._marshall_event_into_redis(id_hash)
-        assert false
+        assert False
     except FesException as e:
         assert e.value == "Failed to retrieve event from hbase hash_id=" + id_hash
