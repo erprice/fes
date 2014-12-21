@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import requests
 import calendar
 import datetime
@@ -7,7 +8,7 @@ import json
 import sys
 
 if len(sys.argv) < 4:
-    print "Usage: add.py <key> <num_seconds> <num_events>"
+    print("Usage: add.py <key> <num_seconds> <num_events>")
 else:
     number = int(sys.argv[3])
 
@@ -16,4 +17,4 @@ else:
         url = "http://localhost:5000/add/" + sys.argv[1] + "_" + str(i) + "/" + str(future)
         response = requests.post(url, data=json.dumps({"a list" : ["a list item"], "a string" : "string value"}), 
     	   headers={'Content-Type': 'application/json'})
-        print response.text
+        print(response.text)

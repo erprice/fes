@@ -3,7 +3,6 @@
 from __future__ import print_function
 from flask import Flask, jsonify, make_response, abort, request
 import json
-import redis_data
 from queue_consumer import queue_consumer
 from marshalling_agent import marshalling_agent
 import fes_controller

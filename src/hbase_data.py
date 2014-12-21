@@ -56,7 +56,7 @@ def read_event(id_hash):
     hbase_data = json.loads(hbase_response.text)
     futureEvent = _marshall_event_from_hbase_response(hbase_data)
 
-    return futureEvent;
+    return futureEvent
 
 def scan_expiration_index(start_row, end_row):
     scanner_id = _submit_scanner(start_row, end_row)

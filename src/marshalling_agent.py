@@ -47,6 +47,6 @@ class marshalling_agent(Thread):
         future_event = hbase_data.read_event(id_hash)
 
         if future_event is None:
-            raise(FesException("Failed to retrieve event from hbase hash_id=" + id_hash))
+            raise FesException("Failed to retrieve event from hbase hash_id=" + id_hash)
         else:
             fes_controller.move_event_to_redis(id_hash, None, future_event)

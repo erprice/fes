@@ -14,7 +14,7 @@ def generate_hash(id_):
 def add(id_, expiration, payload):
     now = datetime.datetime.utcnow()
     if expiration <= calendar.timegm(now.utctimetuple()):
-        raise(FesException("Expiration must be in the future."))
+        raise FesException("Expiration must be in the future.")
 
     id_hash = generate_hash(id_)
 
@@ -43,7 +43,7 @@ def add(id_, expiration, payload):
 def update_expiration(id_, expiration):
     now = datetime.datetime.utcnow()
     if expiration <= calendar.timegm(now.utctimetuple()):
-        raise(FesException("Expiration must be in the future."))
+        raise FesException("Expiration must be in the future.")
 
     id_hash = generate_hash(id_)
 
@@ -74,7 +74,7 @@ def update_expiration(id_, expiration):
             move_event_to_redis(id_hash, expiration, event)
         return
     
-    raise(FesException("Event " + id_ + " not found."))
+    raise FesException("Event " + id_ + " not found.")
 
 def update_event_payload(id_, payload):
     id_hash = generate_hash(id_)
@@ -92,7 +92,7 @@ def update_event_payload(id_, payload):
         hbase_data.write_event(id_hash, future_event.expiration, payload)
         return
 
-    raise(FesException("No event found for id " + id_))
+    raise FesException("No event found for id " + id_)
 
 def delete(id_):
     id_hash = generate_hash(id_)
@@ -110,14 +110,14 @@ def delete(id_):
 
 def _move_event_to_hbase(id_hash, expiration, payload):
     if payload is None:
-        raise(FesException("Error copying event " + id_hash + " to hbase. Data not found."))
+        raise FesException("Error copying event " + id_hash + " to hbase. Data not found.")
 
     redis_data.delete(id_hash)
     hbase_data.add(id_hash, expiration, payload)
 
 def move_event_to_redis(id_hash, expiration, event):
     if event is None:
-        raise(FesException("Error copying event " + id_hash + " to redis. Data not found."))
+        raise FesException("Error copying event " + id_hash + " to redis. Data not found.")
 
     if expiration is None:
         expiration = event.expiration

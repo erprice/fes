@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import requests
 import calendar
 import datetime
@@ -10,4 +11,4 @@ url = "http://localhost:5000/update/expiration/" + sys.argv[1] + "/" + str(futur
 
 response = requests.put(url, headers={'Content-Type': 'application/json'})
 
-print response.text
+print(response.text)
