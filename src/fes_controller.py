@@ -1,4 +1,4 @@
-from future_event import future_event
+from FutureEvent import FutureEvent
 import hbase_data
 import redis_data
 import hashlib
@@ -38,7 +38,7 @@ def add(id_, expiration, payload):
 
         _move_event_to_hbase(id_hash, expiration, payload)
 
-    return future_event(id_hash, payload, expiration)
+    return FutureEvent(id_hash, payload, expiration)
 
 def update_expiration(id_, expiration):
     now = datetime.datetime.utcnow()
@@ -73,7 +73,7 @@ def update_expiration(id_, expiration):
         else:
             move_event_to_redis(id_hash, expiration, event)
         return
-    
+
     raise FesException("Event " + id_ + " not found.")
 
 def update_event_payload(id_, payload):

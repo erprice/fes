@@ -1,4 +1,4 @@
-class future_event:
+class FutureEvent:
     def __init__(self, id_, payload, expiration):
         self.id_ = id_
         self.payload = payload

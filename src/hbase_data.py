@@ -1,8 +1,7 @@
-from ordereddict import OrderedDict
 import requests
 import json
 import base64
-from future_event import future_event
+from FutureEvent import FutureEvent
 
 HBASE_BASE_URL = "http://localhost:8080"
 
@@ -19,14 +18,20 @@ def add(id_hash, expiration, payload):
     _write_expiration_index(id_hash, expiration)
 
 def write_event(id_hash, expiration, payload):
-    url = HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash + "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
+    url = (
+        HBASE_BASE_URL + "/" + EVENT_TABLE + "/" + id_hash +
+        "/" + COLUMN_FAMILY + ":" + PAYLOAD_COLUMN
+    )
     hbase_data = _generate_event_table_write_data(str(expiration), payload)
 
     _write_to_hbase(url, hbase_data)
 
 def _write_expiration_index(id_hash, expiration):
     rowkey = _generate_salted_row_key(id_hash, expiration)
-    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
+    url = (
+        HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" +
+        COLUMN_FAMILY + ":" + EXPIRATION_COLUMN
+    )
     hbase_data = _generate_index_write_data(id_hash)
 
     _write_to_hbase(url, hbase_data)
@@ -41,7 +46,9 @@ def _delete_event(id_hash):
 
 def delete_from_expiration_index(id_hash, expiration):
     rowkey = _generate_salted_row_key(id_hash, expiration)
-    url = HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + id_hash
+    url = (
+        HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/" + rowkey + "/" + COLUMN_FAMILY + ":" + id_hash
+    )
     hbase_response = requests.delete(url)
 
 def read_event(id_hash):
@@ -54,9 +61,9 @@ def read_event(id_hash):
         return None
 
     hbase_data = json.loads(hbase_response.text)
-    futureEvent = _marshall_event_from_hbase_response(hbase_data)
+    future_event = _marshall_event_from_hbase_response(hbase_data)
 
-    return futureEvent
+    return future_event
 
 def scan_expiration_index(start_row, end_row):
     scanner_id = _submit_scanner(start_row, end_row)
@@ -78,12 +85,16 @@ def _submit_scanner(start_row, end_row):
 def _read_scanner_results(scanner_id):
     headers = {'Accept': 'application/json'}
 
-    read_next_response = requests.get(HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/scanner/" + scanner_id, headers=headers)
+    read_next_response = requests.get(
+        HBASE_BASE_URL + "/" + EXPIRATION_TABLE + "/scanner/" + scanner_id, headers=headers
+    )
     if read_next_response.status_code == 200:
         return _get_id_hashes_from_hbase_response(json.loads(read_next_response.text))
 
-"""salt the start of the hbase rowkey to prevent hotspotting on writes"""
 def _generate_salted_row_key(key, expiration):
+    """
+    salt the start of the hbase rowkey to prevent hotspotting on writes
+    """
     return key[:1] + "_" + str(expiration)
 
 def _write_to_hbase(url, data):
@@ -99,7 +110,9 @@ def _generate_event_table_write_data(expiration, payload):
     return _generate_hbase_write_data(column_value_dict)
 
 def _generate_index_write_data(id_hash):
-    return _generate_hbase_write_data({ COLUMN_FAMILY + ":" + id_hash : "" } )
+    return _generate_hbase_write_data(
+        {COLUMN_FAMILY + ":" + id_hash : ""}
+    )
 
 def _generate_hbase_write_data(column_value_dict):
     cells = []
@@ -111,7 +124,7 @@ def _generate_hbase_write_data(column_value_dict):
         }
         cells.append(cell_entries)
 
-    data = { "Row" : [cell] }
+    data = {"Row" : [cell]}
 
     return json.dumps(data)
 
@@ -119,7 +132,7 @@ def _marshall_event_from_hbase_response(data):
     for row in data['Row']:
         payload = ""
         expiration = ""
-        
+
         for cell in row['Cell']:
             column = base64.b64decode(cell['column'])
             value = cell['$']
@@ -132,7 +145,7 @@ def _marshall_event_from_hbase_response(data):
             elif column == COLUMN_FAMILY + ":" + EXPIRATION_COLUMN:
                 expiration = base64.b64decode(str(value))
 
-    return future_event(None, payload, expiration)
+    return FutureEvent(None, payload, expiration)
 
 def _get_id_hashes_from_hbase_response(data):
     id_hashes = []
