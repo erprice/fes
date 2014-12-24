@@ -36,7 +36,7 @@ setup(
 
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
 
-    install_requires=['flask', 'hashlib', 'redis', 'ordereddict', 'requests', 'nose'],
+    install_requires=['redis', 'ordereddict', 'requests', 'nose', 'flask'],
 
     package_data={
         'hbase_schema': ['schema'],
