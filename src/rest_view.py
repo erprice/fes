@@ -4,7 +4,7 @@ from __future__ import print_function
 from flask import Flask, jsonify, make_response, abort, request
 import json
 from QueueConsumer import QueueConsumer
-from MarshallingAgent import MarshallingAgent
+from marshalling_agent import MarshallingAgent
 import fes_controller
 from FesException import FesException
 
